@@ -1,0 +1,23 @@
+.painel {
+    width: 25%;
+    flex-grow: 1;
+    border: 1px solid black;
+}
+
+#quadro {
+    display: flex;
+
+    margin-left: 1%;
+    margin-right: 1%;
+}
+
+#quadro h2 {
+    text-align: center;
+}
+#quadro form > fieldset {
+    border: 0;
+}
+#quadro input {
+    width: 100%;
+}
+
