@@ -4,20 +4,20 @@
     border: 1px solid black;
 }
 
-#quadro {
+.quadro {
     display: flex;
 
     margin-left: 1%;
     margin-right: 1%;
 }
 
-#quadro h2 {
+.quadro h2 {
     text-align: center;
 }
-#quadro form > fieldset {
+.quadro form > fieldset {
     border: 0;
 }
-#quadro input {
+.quadro input {
     width: 100%;
 }
 

@@ -1,13 +1,6 @@
-var nome_listas  = ["bloqueadas", "a_fazer", "fazendo", "feitas"];
 var estado_salvo = {};
 
 function main() {
-    const quadro = document.getElementById("quadro");
-    for (const id of nome_listas) {
-        const pn = painel_populado(id);
-        quadro.appendChild(pn);
-    }
-
     const cabeçalho = document.getElementById("cabeçalho");
     const botao_salvar = document.createElement('button');
           botao_salvar.id = "botao_salvar";
@@ -15,17 +8,82 @@ function main() {
           botao_salvar.onclick = aplicar(salvar_estado, estado_salvo);
 
     const form_carregar = form_populado("carregar");
-          form_carregar.onsubmit = aplicar(carregar_estado);
+          form_carregar.onsubmit = aplicar(ao_receber_estado);
 
     cabeçalho.appendChild(form_carregar)
     cabeçalho.appendChild(botao_salvar)
+
+    const estado_padrão = {"kanban": {"bloqueadas": [],
+                                      "a_fazer":    [],
+                                      "fazendo":    [],
+                                      "feitas":     []}};
+    carregar_estado(estado_padrão); //! colocar botões levando a quadros diferentes
 } main()
+
+function salvar_estado(estado) {
+    const input = document.getElementById('input_carregar');
+
+    const quadros = document.getElementsByClassName("quadro")
+    for (const quadro of quadros) {
+        const nome_quadro = desprefixar(quadro.id, "quadro_");
+
+        estado[nome_quadro] = {};
+        const listas = quadro.getElementsByClassName("lista");
+        for (const lista of listas) {
+            const id = desprefixar(lista.id, "lista_");
+
+            const arr = [];
+            for (const item of lista.getElementsByTagName('input')) {
+                arr.push(item.value);
+            }
+
+            estado[nome_quadro][id] = arr;
+        }
+    }
+
+    input.value = JSON.stringify(estado)
+}
+function carregar_estado(estado) {
+    const quadros = document.getElementById("quadros")
+          quadros.textContent = "";
+    for (const [id_quadro, paineis] of Object.entries(estado)) {
+        const quadro = document.createElement("div");
+              quadro.className = "quadro";
+              quadro.id        = `quadro_${id_quadro}`;
+        quadros.appendChild(quadro);
+        for (const [id, lista] of Object.entries(paineis)) {
+            const pn = painel_populado(id);
+            quadro.appendChild(pn);
+            const div = document.getElementById(`lista_${id}`); //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra dentro)
+                  div.textContent = "";
+            for (let i = 0; i < lista.length; i++) { //! corpo repetido
+                const input = document.createElement('input');
+                      input.id   = `input_${id}_${i}`;
+                      input.type = 'text';
+                const fr = form(`${id}_${i}`, input);
+                      input.value = lista[i];
+                      fr.addEventListener('blur', aplicar(remover_se_esvaziar, fr, input), true); //! descobrir pq onblur não funcionou
+                      fr.onsubmit =               aplicar(remover_se_esvaziar, fr, input);
+                div.appendChild(fr);
+            }
+        }
+    }
+}
+function ao_receber_estado(evt) {
+    const input  = document.getElementById('input_carregar');
+    const estado = JSON.parse(input.value);
+    
+    carregar_estado(estado);
+
+    return false; // para não recarregar a página
+}
 
 function painel_populado(nome) {
     const tl = document.createElement('h2');
           tl.textContent = nome;
     const ls = document.createElement('div');
           ls.id = `lista_${nome}`;
+          ls.className = "lista"
     const fr = form_populado(nome);
 
     return painel(nome, tl, ls, fr);
@@ -56,47 +114,12 @@ function form(id, input) {
     return form;
 }
 
-function salvar_estado(estado) {
-    const input = document.getElementById('input_carregar');
-
-    for (const id of nome_listas) {
-        const lista = document.getElementById(`lista_${id}`);
-
-        const arr = [];
-        for (const item of lista.getElementsByTagName('input')) {
-            arr.push(item.value);
-        } estado[id] = arr;
-    }
-
-    input.value = JSON.stringify(estado)
-}
-function carregar_estado(evt) {
-    const input  = document.getElementById('input_carregar');
-    const estado = JSON.parse(input.value)
-
-    for (const [id, lista] of Object.entries(estado)) {
-        const div = document.getElementById(`lista_${id}`);
-              div.textContent = "";
-        for (let i = 0; i < lista.length; i++) {
-            const input = document.createElement('input');
-                  input.id   = `input_${id}_${i}`;
-                  input.type = 'text';
-            const fr = form(`${id}_${i}`, input);
-                  input.value = lista[i];
-                  fr.addEventListener('blur', aplicar(remover_se_esvaziar, fr, input), true); //! descobrir pq onblur não funcionou
-                  fr.onsubmit =               aplicar(remover_se_esvaziar, fr, input);
-            div.appendChild(fr);
-        }
-    }
-    return false; // para não recarregar a página
-}
-
 function ao_ler(div, id, evt) {
     const n     = div.childElementCount;
     const novo  = document.getElementById(`input_${id}`);
     const texto = novo.value.trim(); novo.value = "";
 
-    if (texto) {
+    if (texto) { //! corpo_repetido
         const input = document.createElement('input');
               input.id   = `input_${id}_${n}`;
               input.type = 'text';
@@ -117,3 +140,7 @@ function aplicar(func, ...args) { // para aplicação parcial
     return func.bind(null, ...args);
 }
 
+function desprefixar(str, prefixo) {
+    if (str.startsWith(prefixo)) return str.slice(prefixo.length)
+    else                         return str
+}
