@@ -1,3 +1,4 @@
+var url = window.location.hostname;
 var estado_salvo = {};
 
 function main() {
@@ -13,16 +14,19 @@ function main() {
     cabeçalho.appendChild(form_carregar)
     cabeçalho.appendChild(botao_salvar)
 
+    const params = new URLSearchParams(window.location.search);
+    const estado = params.get("");
     const estado_padrão = {"kanban": {"bloqueadas": [],
                                       "a_fazer":    [],
                                       "fazendo":    [],
                                       "feitas":     []}};
-    carregar_estado(estado_padrão); //! colocar botões levando a quadros diferentes
+    if (estado) estado_salvo = JSON.parse(estado);
+    else        estado_salvo = estado_padrão;
+    carregar_estado(estado_salvo); //! colocar botões levando a quadros diferentes
+    mostrar_estado(estado_salvo);
 } main()
 
 function salvar_estado(estado) {
-    const input = document.getElementById('input_carregar');
-
     const quadros = document.getElementsByClassName("quadro")
     for (const quadro of quadros) {
         const nome_quadro = desprefixar(quadro.id, "quadro_");
@@ -41,8 +45,18 @@ function salvar_estado(estado) {
         }
     }
 
-    input.value = JSON.stringify(estado)
+    mostrar_estado(estado);
 }
+function mostrar_estado(estado) {
+    const json  = JSON.stringify(estado);
+    const input = document.getElementById('input_carregar');
+          input.value = json;
+
+    const params = new URLSearchParams(window.location.search);
+          params.set('', json);
+    history.replaceState(null, null, "?" + params.toString());
+}
+
 function carregar_estado(estado) {
     const quadros = document.getElementById("quadros")
           quadros.textContent = "";
@@ -144,3 +158,4 @@ function desprefixar(str, prefixo) {
     if (str.startsWith(prefixo)) return str.slice(prefixo.length)
     else                         return str
 }
+
