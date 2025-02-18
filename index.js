@@ -1,30 +1,27 @@
-var url = window.location.hostname;
-var estado_salvo = {};
+var salvo = {"kanban": {"bloqueadas": [], "a_fazer": [], "fazendo": [], "feitas": []}};
+//! em vez de um quadro padrão, colocar botões levando a quadros diferentes
+//! + botão de resetar
 
 function main() {
-    const cabeçalho = document.getElementById("cabeçalho");
+    const cabeçalho    = document.getElementById("cabeçalho");
     const botao_salvar = document.createElement('button');
           botao_salvar.id = "botao_salvar";
           botao_salvar.textContent = "salvar";
-          botao_salvar.onclick = aplicar(salvar_estado, estado_salvo);
+          botao_salvar.onclick = aplicar(salvar_estado, salvo);
 
     const form_carregar = form_populado("carregar");
           form_carregar.onsubmit = aplicar(ao_receber_estado);
 
-    cabeçalho.appendChild(form_carregar)
-    cabeçalho.appendChild(botao_salvar)
+    cabeçalho.appendChild(form_carregar);
+    cabeçalho.appendChild(botao_salvar);
 
     const params = new URLSearchParams(window.location.search);
     const estado = params.get("");
-    const estado_padrão = {"kanban": {"bloqueadas": [],
-                                      "a_fazer":    [],
-                                      "fazendo":    [],
-                                      "feitas":     []}};
-    if (estado) estado_salvo = JSON.parse(estado);
-    else        estado_salvo = estado_padrão;
-    carregar_estado(estado_salvo); //! colocar botões levando a quadros diferentes
-    mostrar_estado(estado_salvo);
-} main()
+    if (estado) {
+        salvo = JSON.parse(atostr(estado));
+        mostrar_estado(salvo);
+    } carregar_estado(salvo);
+}
 
 function salvar_estado(estado) {
     const quadros = document.getElementsByClassName("quadro")
@@ -53,7 +50,7 @@ function mostrar_estado(estado) {
           input.value = json;
 
     const params = new URLSearchParams(window.location.search);
-          params.set('', json);
+          params.set('', strtoa(json));
     history.replaceState(null, null, "?" + params.toString());
 }
 
@@ -159,3 +156,18 @@ function desprefixar(str, prefixo) {
     else                         return str
 }
 
+var decoder = new TextDecoder()
+function atostr(base64) {
+  const byte_str = atob(base64);
+  const arr      = Uint8Array.from(byte_str, (m) => m.codePointAt(0));
+  return decoder.decode(arr);
+}
+
+var encoder = new TextEncoder()
+function strtoa(str) {
+  const bytes = encoder.encode(str);
+  const byte_str = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join("");
+  return btoa(byte_str);
+}
+
+main()
