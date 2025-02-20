@@ -1,12 +1,13 @@
+:root { color-scheme: light dark; }
+
 .painel {
     flex: 20%;
-    border: 1px solid black;
+    border: 1px solid light-dark(white, black);
 }
 @media (max-width: 500px) {
   /* responsivo: painéis com o mesmo tamanho abaixo de uma largura da tela */
   .painel { flex: 100% }
 }
-
 
 .quadro {
     display: flex;
