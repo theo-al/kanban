@@ -4,9 +4,13 @@
     flex: 20%;
     border: 1px solid light-dark(white, black);
 }
-@media (max-width: 500px) {
-  /* responsivo: painéis com o mesmo tamanho abaixo de uma largura da tela */
-  .painel { flex: 100% }
+@media (max-aspect-ratio: 1/1) {
+  /* responsivo: painéis verticais quando em landscape*/
+  .painel { flex: 100%; }
+}
+@media (min-width: 500px) {
+  /* responsivo: painéis verticais abaixo de uma largura da tela */
+  .painel { flex: 20%; }
 }
 
 .quadro {
