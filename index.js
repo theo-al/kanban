@@ -3,14 +3,14 @@ var salvo = {"kanban": {"bloqueadas": [], "a_fazer": [], "fazendo": [], "feitas"
 //! + botão de resetar
 
 function main() {
-    const cabeçalho    = document.getElementById("cabeçalho");
+    const cabeçalho    = document.getElementById("cabeçalho"); //tecnicamente esssa linha não precisa existir
     const botao_salvar = document.createElement('button');
-          botao_salvar.id = "botao_salvar";
+          botao_salvar.id          = "botao_salvar";
           botao_salvar.textContent = "salvar";
-          botao_salvar.onclick = aplicar(salvar_estado, salvo);
+          botao_salvar.onclick = aplicar(salvar_estado_html_no_json, salvo);
 
     const form_carregar = form_populado("carregar");
-          form_carregar.onsubmit = aplicar(ao_receber_estado);
+          form_carregar.onsubmit = aplicar(ao_receber_json);
 
     cabeçalho.appendChild(form_carregar);
     cabeçalho.appendChild(botao_salvar);
@@ -19,11 +19,11 @@ function main() {
     const estado = params.get("");
     if (estado) {
         salvo = JSON.parse(atostr(estado));
-        mostrar_estado(salvo);
-    } carregar_estado(salvo);
+        mostrar_json(salvo);
+    } carregar_estado_no_html(salvo);
 }
 
-function salvar_estado(estado) {
+function salvar_estado_html_no_json(estado) {
     const quadros = document.getElementsByClassName("quadro")
     for (const quadro of quadros) {
         const nome_quadro = desprefixar(quadro.id, "quadro_");
@@ -42,9 +42,9 @@ function salvar_estado(estado) {
         }
     }
 
-    mostrar_estado(estado);
+    mostrar_json(estado);
 }
-function mostrar_estado(estado) {
+function mostrar_json(estado) {
     const json  = JSON.stringify(estado);
     const input = document.getElementById('input_carregar');
           input.value = json;
@@ -54,7 +54,7 @@ function mostrar_estado(estado) {
     history.replaceState(null, null, "?" + params.toString());
 }
 
-function carregar_estado(estado) {
+function carregar_estado_no_html(estado) {
     const quadros = document.getElementById("quadros")
           quadros.textContent = "";
     for (const [id_quadro, paineis] of Object.entries(estado)) {
@@ -68,7 +68,7 @@ function carregar_estado(estado) {
             const div = document.getElementById(`lista_${id}`); //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra dentro)
                   div.textContent = "";
             for (let i = 0; i < lista.length; i++) { //! corpo repetido
-                const input = document.createElement('input');
+                const input      = document.createElement('input');
                       input.id   = `input_${id}_${i}`;
                       input.type = 'text';
                 const fr = form(`${id}_${i}`, input);
@@ -80,11 +80,11 @@ function carregar_estado(estado) {
         }
     }
 }
-function ao_receber_estado(evt) {
+function ao_receber_json(evt) {
     const input  = document.getElementById('input_carregar');
     const estado = JSON.parse(input.value);
     
-    carregar_estado(estado);
+    carregar_estado_no_html(estado);
 
     return false; // para não recarregar a página
 }
@@ -93,16 +93,16 @@ function painel_populado(nome) {
     const tl = document.createElement('h2');
           tl.textContent = nome;
     const ls = document.createElement('div');
-          ls.id = `lista_${nome}`;
-          ls.className = "lista"
+          ls.id        = `lista_${nome}`;
+          ls.className = "lista";
     const fr = form_populado(nome);
 
     return painel(nome, tl, ls, fr);
 }
 function painel(nome, titulo, lista, form) {
-    form.onsubmit = aplicar(ao_ler, lista, nome);
+    form.onsubmit = aplicar(ao_ler_item_novo, lista, nome);
     const dv = document.createElement('div');
-          dv.id = nome;
+          dv.id        = nome;
           dv.className = 'painel';
           dv.appendChild(titulo);
           dv.appendChild(lista);
@@ -111,7 +111,7 @@ function painel(nome, titulo, lista, form) {
 }
 
 function form_populado(id) {
-    const input    = document.createElement('input');
+    const input = document.createElement('input');
           input.id   = `input_${id}`;
           input.type = 'text';
     return form(id, input);
@@ -119,13 +119,14 @@ function form_populado(id) {
 function form(id, input) {
     const fieldset = document.createElement('fieldset');
           fieldset.appendChild(input);
-    const form     = document.createElement('form');
-          form.id  = `form_${id}`;
+
+    const form = document.createElement('form');
+          form.id = `form_${id}`;
           form.appendChild(fieldset);
     return form;
 }
 
-function ao_ler(div, id, evt) {
+function ao_ler_item_novo(div, id, evt) {
     const n     = div.childElementCount;
     const novo  = document.getElementById(`input_${id}`);
     const texto = novo.value.trim(); novo.value = "";
@@ -158,16 +159,16 @@ function desprefixar(str, prefixo) {
 
 var decoder = new TextDecoder()
 function atostr(base64) {
-  const byte_str = atob(base64);
-  const arr      = Uint8Array.from(byte_str, (m) => m.codePointAt(0));
-  return decoder.decode(arr);
+    const byte_str = atob(base64);
+    const arr      = Uint8Array.from(byte_str, (m) => m.codePointAt(0));
+    return decoder.decode(arr);
 }
 
 var encoder = new TextEncoder()
 function strtoa(str) {
-  const bytes = encoder.encode(str);
-  const byte_str = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join("");
-  return btoa(byte_str);
+    const bytes    = encoder.encode(str);
+    const byte_str = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join("");
+    return btoa(byte_str);
 }
 
 main()
