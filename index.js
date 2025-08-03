@@ -1,13 +1,29 @@
-var salvo = {"kanban": {"bloqueadas": [], "a_fazer": [], "fazendo": [], "feitas": []}};
-//! em vez de um quadro padrão, colocar botões levando a quadros diferentes
-//! + botão de resetar
+var preset_salvo;
+var estado_salvo = {}
+
+const presets = {
+    "b64obj": {},
+    "object": {},
+    "kanban": {
+        "kanban": {"bloqueadas":[], "a_fazer":[], "fazendo":[], "feitas":[]}
+    },
+    "semana": {
+        "semana": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
+    },
+    "mes": {
+        "semana1": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
+        "semana2": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
+        "semana3": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
+        "semana4": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
+    },
+};
 
 function main() {
-    const cabeçalho    = document.getElementById("cabeçalho"); //tecnicamente esssa linha não precisa existir
+    const cabeçalho    = document.getElementById("cabeçalho"); // tecnicamente esssa linha não precisa existir
     const botao_salvar = document.createElement('button');
           botao_salvar.id          = "botao_salvar";
           botao_salvar.textContent = "salvar";
-          botao_salvar.onclick = aplicar(salvar_estado_html_no_json, salvo);
+          botao_salvar.onclick = aplicar(salvar_estado_do_html, estado_salvo);
 
     const form_carregar = form_populado("carregar");
           form_carregar.onsubmit = aplicar(ao_receber_json);
@@ -15,16 +31,46 @@ function main() {
     cabeçalho.appendChild(form_carregar);
     cabeçalho.appendChild(botao_salvar);
 
-    const params = new URLSearchParams(window.location.search);
-    const estado = params.get("");
-    if (estado) {
-        salvo = JSON.parse(atostr(estado));
-        mostrar_json(salvo);
-    } carregar_estado_no_html(salvo);
+    const url = new URL(window.location.href);
+    const {estado, preset} = url_para_estado(url);
+
+    Object.assign(estado_salvo, estado);
+                  preset_salvo= preset;
+
+    mostrar_json(JSON.stringify(estado_salvo));
+    atualizar_url(estado_salvo, preset_salvo);
+
+    carregar_estado_no_html(estado_salvo);
 }
 
-function salvar_estado_html_no_json(estado) {
-    const quadros = document.getElementsByClassName("quadro")
+function url_para_estado(url) {
+    const _estado = url.searchParams.get("");
+    const _hash   = url.hash.slice(1);
+
+    const _antigo = _estado && !_hash;
+    const _preset = _antigo ? "b64obj" : _hash;
+    const preset  = _preset ? _preset : "kanban";
+
+    let estado = presets[preset];
+    if (_estado) {
+        switch (preset) {
+            case "semana": case "mes": case "kanban":
+                estado = JSON.parse(atostr(_estado));
+            break;
+            case "b64obj":
+                estado = JSON.parse(atostr(_estado));
+            break;
+            case "object":
+                estado = JSON.parse(_estado);
+            break;
+            default: unreachable()
+        }
+    } 
+    return {estado, preset};
+}
+
+function salvar_estado_do_html(estado) {
+    const quadros = document.getElementsByClassName("quadro");
     for (const quadro of quadros) {
         const nome_quadro = desprefixar(quadro.id, "quadro_");
 
@@ -42,19 +88,24 @@ function salvar_estado_html_no_json(estado) {
         }
     }
 
-    mostrar_json(estado);
+    mostrar_json(JSON.stringify(estado)); //! a mais
+    atualizar_url(estado, preset_salvo);  //! a mais,global
 }
-function mostrar_json(estado) {
-    const json  = JSON.stringify(estado);
+function mostrar_json(json) {
     const input = document.getElementById('input_carregar');
           input.value = json;
-
-    const params = new URLSearchParams(window.location.search);
-          params.set('', strtoa(json));
-    history.replaceState(null, null, "?" + params.toString());
+}
+function atualizar_url(estado, preset) {
+    //! fazer coisas diferentes dependendo do preset
+    const json = JSON.stringify(estado);
+    const url = new URL(window.location.href);
+          url.searchParams.set('', strtoa(json));
+          url.hash = preset;
+    history.replaceState(null, null, url);
 }
 
 function carregar_estado_no_html(estado) {
+    //! dividir em partes (que sejam chamadas só nos momentos que precisam)
     const quadros = document.getElementById("quadros")
           quadros.textContent = "";
     for (const [id_quadro, paineis] of Object.entries(estado)) {
@@ -102,8 +153,8 @@ function painel_populado(nome) {
 function painel(nome, titulo, lista, form) {
     form.onsubmit = aplicar(ao_ler_item_novo, lista, nome);
     const dv = document.createElement('div');
-          dv.id        = nome;
           dv.className = 'painel';
+          dv.id        = nome;
           dv.appendChild(titulo);
           dv.appendChild(lista);
           dv.appendChild(form);
