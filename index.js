@@ -2,21 +2,27 @@ var preset_salvo;
 var estado_salvo = {}
 
 const presets = {
-    "b64obj": {},
-    "object": {},
-    "kanban": {
-        "kanban": {"bloqueadas":[], "a_fazer":[], "fazendo":[], "feitas":[]}
-    },
-    "semana": {
-        "semana": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
-    },
-    "mes": {
-        "semana1": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
-        "semana2": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
-        "semana3": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
-        "semana4": {"segunda":[], "terça":[], "quarta":[], "quinta":[], "sexta":[], "sábado":[], "domingo":[]},
-    },
+  "b64obj": [[], [[]]], "object": [[], [[]]],
+  "kanban": [
+    ["kanban"], [
+     ["bloqueadas", "a_fazer", "fazendo", "feitas"]
+    ]
+  ],
+  "semana": [
+    ["semana"], [
+     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    ],
+  ],
+  "mes": [
+    ["semana1", "semana2", "semana3", "semana4"], [
+     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
+     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
+     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
+     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    ]
+  ],
 };
+
 
 function main() {
     const cabeçalho    = document.getElementById("cabeçalho"); // tecnicamente esssa linha não precisa existir
@@ -40,7 +46,52 @@ function main() {
     mostrar_json(JSON.stringify(estado_salvo));
     atualizar_url(estado_salvo, preset_salvo);
 
-    carregar_estado_no_html(estado_salvo);
+    carregar_estado_para_html(estado_salvo);
+}
+
+function preset_para_objeto(preset) {
+    const objeto = {};
+    const quadros = preset[0];
+    const paineis = preset[1];
+    for (const [idx, quadro] of quadros.entries()) {
+        objeto[quadro] = {};
+        for (const painel of paineis[idx]) {
+            objeto[quadro][painel] = [];
+        }
+    }
+    return objeto;
+}
+function objeto_para_preset(obj) {
+    const _quadros = [];
+    const _paineis = [];
+    for (const [nome_quadro, paineis] of Object.entries(obj)) {
+        _quadros.push(nome_quadro);
+        for (const [nome_painel, lista] of Object.entries(paineis)) {
+            _paineis.push(nome_painel);
+        }
+    }
+    return [_quadros, _paineis];
+}
+function objeto_para_resumo(obj) {
+    const _paineis = [];
+    for (const [_, paineis] of Object.entries(obj)) {
+        for (const [_, lista] of Object.entries(paineis)) {
+            _paineis.push(lista);
+        }
+    }
+    return _paineis;
+}
+function resumo_para_objeto(arr, nome_preset) {
+    const objeto = {};
+    const quadros = presets[nome_preset][0];
+    const paineis = presets[nome_preset][1];
+    for (const [idx, quadro] of quadros.entries()) {
+        objeto[quadro] = {};
+        for (const painel of paineis[idx]) {
+            objeto[quadro][painel] = arr[idx];
+        }
+    }
+    return objeto;
 }
 
 function url_para_estado(url) {
@@ -51,19 +102,17 @@ function url_para_estado(url) {
     const _preset = _antigo ? "b64obj" : _hash;
     const preset  = _preset ? _preset : "kanban";
 
-    let estado = presets[preset];
+    let estado = preset_para_objeto(presets[preset]);
     if (_estado) {
         switch (preset) {
-            case "semana": case "mes": case "kanban":
-                estado = JSON.parse(atostr(_estado));
-            break;
-            case "b64obj":
-                estado = JSON.parse(atostr(_estado));
-            break;
-            case "object":
-                estado = JSON.parse(_estado);
-            break;
-            default: unreachable()
+          case "kanban": case "semana": case "mes":
+              const arr = JSON.parse(atostr(_estado));
+              estado = resumo_para_objeto(arr, preset);
+          break;
+
+          case "b64obj": estado = JSON.parse(atostr(_estado)); break;
+          case "object": estado = JSON.parse(_estado);         break;
+          default: unreachable()
         }
     } 
     return {estado, preset};
@@ -83,7 +132,6 @@ function salvar_estado_do_html(estado) {
             for (const item of lista.getElementsByTagName('input')) {
                 arr.push(item.value);
             }
-
             estado[nome_quadro][id] = arr;
         }
     }
@@ -96,15 +144,25 @@ function mostrar_json(json) {
           input.value = json;
 }
 function atualizar_url(estado, preset) {
-    //! fazer coisas diferentes dependendo do preset
-    const json = JSON.stringify(estado);
     const url = new URL(window.location.href);
+
+    const json = JSON.stringify(estado);
+    switch (preset) {
+      case "b64obj": case "object":
           url.searchParams.set('', strtoa(json));
+          url.hash = "b64obj";
+      break;
+      case "kanban": case "semana": case "mes":
+          const res = objeto_para_resumo(estado);
+          const ret = JSON.stringify(res);
+          url.searchParams.set('', strtoa(ret));
           url.hash = preset;
+      break;
+    }
     history.replaceState(null, null, url);
 }
 
-function carregar_estado_no_html(estado) {
+function carregar_estado_para_html(estado) {
     //! dividir em partes (que sejam chamadas só nos momentos que precisam)
     const quadros = document.getElementById("quadros")
           quadros.textContent = "";
@@ -135,8 +193,7 @@ function ao_receber_json(evt) {
     const input  = document.getElementById('input_carregar');
     const estado = JSON.parse(input.value);
     
-    carregar_estado_no_html(estado);
-
+    carregar_estado_para_html(estado);
     return false; // para não recarregar a página
 }
 
