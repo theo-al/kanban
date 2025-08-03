@@ -93,12 +93,12 @@ function objeto_para_resumo(obj) {
 }
 function resumo_para_objeto(arr, nome_preset) {
     const objeto = {};
-    const quadros = presets[nome_preset][0];
-    const paineis = presets[nome_preset][1];
-    for (const [idx, quadro] of quadros.entries()) {
-        objeto[quadro] = {};
-        for (const painel of paineis[idx]) {
-            objeto[quadro][painel] = arr[idx];
+    const nomes_quadros = presets[nome_preset][0];
+    const nomes_paineis = presets[nome_preset][1];
+    for (const [qd, nome_quadro] of nomes_quadros.entries()) {
+        objeto[nome_quadro] = {};
+        for (const [pn, nome_painel] of nomes_paineis[qd].entries()) {
+            objeto[nome_quadro][nome_painel] = arr[pn] || [];
         }
     }
     return objeto;
