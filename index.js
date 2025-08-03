@@ -47,6 +47,16 @@ function main() {
     atualizar_url(estado_salvo, preset_salvo);
 
     carregar_estado_para_html(estado_salvo);
+
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key === 's') {
+            salvar_estado_do_html(estado_salvo);
+            e.preventDefault(); // prevent save dialog
+        }
+    });
+    const salvador = setInterval(
+        aplicar(salvar_estado_do_html, estado_salvo), 240_000/*4m*/
+    );
 }
 
 function preset_para_objeto(preset) {
