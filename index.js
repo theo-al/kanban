@@ -1,5 +1,9 @@
+//! bug (grande): mesmo nome de lista em mais de um quadro não funciona
+//!     - isso faz o preset mês ficar inutilizável
 //! melhoria ux: drag&drop
 //! melhoria ux: recarregar quando muda a hash
+//! melhoria ui: diminuir o form vazio (e aumentar quando selecionar)
+//! melhoria interna: usar propriedades dos eventos nos callbacks
 //! melhoria interna: atualizar só o que precisa, primeiro o estado e depois o html
 
 var preset_salvo;
@@ -35,7 +39,7 @@ function main() {
           botao_salvar.textContent = "salvar";
           botao_salvar.onclick = aplicar(salvar_estado_do_html, estado_salvo);
 
-    const form_carregar = form_vazio("carregar");
+    const form_carregar = form("carregar");
           form_carregar.onsubmit = aplicar(ao_receber_json);
 
     cabeçalho.appendChild(form_carregar);
@@ -189,76 +193,72 @@ function carregar_estado_para_html(estado, preset) {
     const quadros = document.getElementById("quadros");
           quadros.textContent = "";
     for (const [id_quadro, paineis] of Object.entries(estado)) {
-        const nome = document.createElement("h2");
-              nome.textContent = id_quadro.replace("_", " ");
-        const quadro = document.createElement("div");
-              quadro.className = "quadro";
-              quadro.id        = `quadro_${id_quadro}`;
-              quadro.appendChild(nome);
+        const quadro = quadro_vazio(id_quadro);
         quadros.appendChild(quadro);
-        for (const [id_lista, lista] of Object.entries(paineis)) {
-            const pn = painel_vazio(id_lista);
-            quadro.appendChild(pn);
-            //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra função)
-            const div = document.getElementById(`lista_${id_lista}`); 
-                  div.textContent = "";
-            for (let i = 0; i < lista.length; i++) { //! repetido
-                const id = `${id_lista}_${i}`;
-                const fr = form(id, input(id, lista[i]), {
-                    onblur:   remover_se_esvaziar,
-                    onsubmit: remover_se_esvaziar,
-                });
-                div.appendChild(fr);
-            }
+        for (const [id_lista, itens] of Object.entries(paineis)) {
+            quadro.appendChild(painel(id_lista, itens));
         }
     }
 }
-function ao_receber_json(evt) {
-    const input  = document.getElementById('input_carregar');
-    const estado = JSON.parse(input.value);
-    Object.assign(estado_salvo, estado);
-                  preset_salvo= "object";
-    
-    carregar_estado_para_html(estado_salvo, preset_salvo);
-    return false; // para não recarregar a página
+
+function quadro_vazio(nome) {
+    const quadro = document.createElement("div");
+          quadro.className = "quadro";
+          quadro.id        = `quadro_${nome}`;
+
+    if (nome) {
+        const título = document.createElement("h2");
+              título.textContent = nome.replace("_", " ");
+        quadro.appendChild(título);
+    }
+    return quadro;
 }
 
-function painel_vazio(nome) {
+function painel(nome, itens=[]) {
     const tl = document.createElement('h2');
           tl.textContent = nome;
-    const ls = document.createElement('div');
-          ls.id        = `lista_${nome}`;
-          ls.className = "lista";
-    const fr = form_vazio(nome);
-
-    return painel(nome, tl, ls, fr);
-}
-function painel(nome, titulo, lista, form) {
-    form.onsubmit = aplicar(ao_ler_item_novo, lista, nome);
+    const ls = lista(nome, itens);
+    const fr = form(nome, "", {
+        onsubmit: aplicar(ao_ler_item_novo, ls, nome),
+    });
     const dv = document.createElement('div');
           dv.className = 'painel';
           dv.id        = nome;
-          dv.appendChild(titulo);
-          dv.appendChild(lista);
-          dv.appendChild(form);
+          dv.appendChild(tl);
+          dv.appendChild(ls);
+          dv.appendChild(fr);
     return dv;
 }
 
-function form_vazio(id) {
-    return form(id, input(id));
+function lista(nome, itens=[]) {
+    const div = document.createElement("div")
+          div.id        = `lista_${nome}`;
+          div.className = "lista";
+    for (let i = 0; i < itens.length; i++) { //! repetido
+        const id = `${nome}_${i}`;
+        const fr = form(id, itens[i], {
+            onblur:   remover_se_esvaziar,
+            onsubmit: remover_se_esvaziar,
+        });
+        div.appendChild(fr);
+    }
+    return div;
 }
-function form(id, input, {onsubmit=null, onblur=null}={}) {
+
+function form(id, texto="", {onsubmit=null, onblur=null}={}) {
+    const inpt = input(id, texto);
     const fieldset = document.createElement('fieldset');
-          fieldset.appendChild(input);
+          fieldset.appendChild(inpt);
 
     const form = document.createElement('form');
           form.id = `form_${id}`;
           form.appendChild(fieldset);
 
+    //! ver se manter esses callbacks assim
     if (onsubmit)
-        form.onsubmit = aplicar(onsubmit, form, input);
+        form.onsubmit = aplicar(onsubmit, form, inpt);
     if (onblur) //! descobrir pq onblur não funcionou
-        form.addEventListener('blur', aplicar(onblur, form, input), true);
+        form.addEventListener('blur', aplicar(onblur, form, inpt), true);
     return form;
 }
 
@@ -270,22 +270,32 @@ function input(id, texto="") {
     return input;
 }
 
-function ao_ler_item_novo(div, _id, evt) {
-    const n     = div.childElementCount;
-    const novo  = document.getElementById(`input_${_id}`);
+function ao_receber_json(_evt) {
+    const input  = document.getElementById('input_carregar');
+    const estado = JSON.parse(input.value);
+    Object.assign(estado_salvo, estado);
+                  preset_salvo= "object";
+    
+    carregar_estado_para_html(estado_salvo, preset_salvo);
+    return false; // para não recarregar a página
+}
+
+function ao_ler_item_novo(lista, nome, _fr, _inpt, _evt) {
+    const n     = lista.childElementCount;
+    const novo  = document.getElementById(`input_${nome}`);
     const texto = novo.value.trim(); novo.value = "";
 
     if (texto) { //! repetido
-        const id = `${_id}_${n}`;
-        const fr = form(id, input(id, texto), {
+        const id = `${nome}_${n}`;
+        const fr = form(id, texto, {
             onblur:   remover_se_esvaziar,
             onsubmit: remover_se_esvaziar,
         });
-        div.appendChild(fr);
+        lista.appendChild(fr);
     }
     return false; // para não recarregar a página
 }
-function remover_se_esvaziar(form, input, evt) {
+function remover_se_esvaziar(form, input, _evt) {
     if (!input.value) form.parentNode.removeChild(form);
     return false; // para não recarregar a página
 }
