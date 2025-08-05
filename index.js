@@ -1,24 +1,28 @@
+//! melhoria ux: drag&drop
+//! melhoria ux: recarregar quando muda a hash
+//! melhoria interna: atualizar só o que precisa, primeiro o estado e depois o html
+
 var preset_salvo;
 var estado_salvo = {}
 
 const presets = {
   "b64obj": [[], [[]]], "object": [[], [[]]],
   "kanban": [
-    ["kanban"], [
+    [""], [
      ["bloqueadas", "a_fazer", "fazendo", "feitas"]
     ]
   ],
   "semana": [
-    ["semana"], [
-     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    [""], [
+     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
     ],
   ],
   "mes": [
-    ["semana1", "semana2", "semana3", "semana4"], [
-     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
-     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
-     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"],
-     ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    ["semana_1", "semana_2", "semana_3", "semana_4"], [
+     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
     ]
   ],
 };
@@ -46,7 +50,7 @@ function main() {
     mostrar_json(JSON.stringify(estado_salvo));
     atualizar_url(estado_salvo, preset_salvo);
 
-    carregar_estado_para_html(estado_salvo);
+    carregar_estado_para_html(estado_salvo, preset_salvo);
 
     document.addEventListener('keydown', e => {
         if (e.ctrlKey && e.key === 's') {
@@ -149,6 +153,7 @@ function salvar_estado_do_html(estado) {
     mostrar_json(JSON.stringify(estado)); //! a mais
     atualizar_url(estado, preset_salvo);  //! a mais,global
 }
+
 function mostrar_json(json) {
     const input = document.getElementById('input_carregar');
           input.value = json;
@@ -172,19 +177,29 @@ function atualizar_url(estado, preset) {
     history.replaceState(null, null, url);
 }
 
-function carregar_estado_para_html(estado) {
+function carregar_estado_para_html(estado, preset) {
     //! dividir em partes (que sejam chamadas só nos momentos que precisam)
-    const quadros = document.getElementById("quadros")
+    const cabeçalho = document.getElementById("cabeçalho");
+    const [título]  = cabeçalho.getElementsByTagName("h1");
+    switch (preset) {
+      case "mes": case "semana": título.textContent = "puranā"; break;
+      default:                   título.textContent = "kanban"; break;
+    }
+
+    const quadros = document.getElementById("quadros");
           quadros.textContent = "";
     for (const [id_quadro, paineis] of Object.entries(estado)) {
+        const nome = document.createElement("h2");
+              nome.textContent = id_quadro.replace("_", " ");
         const quadro = document.createElement("div");
               quadro.className = "quadro";
               quadro.id        = `quadro_${id_quadro}`;
+              quadro.appendChild(nome);
         quadros.appendChild(quadro);
         for (const [id, lista] of Object.entries(paineis)) {
             const pn = painel_populado(id);
             quadro.appendChild(pn);
-            const div = document.getElementById(`lista_${id}`); //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra dentro)
+            const div = document.getElementById(`lista_${id}`); //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra função)
                   div.textContent = "";
             for (let i = 0; i < lista.length; i++) { //! corpo repetido
                 const input      = document.createElement('input');
@@ -202,8 +217,10 @@ function carregar_estado_para_html(estado) {
 function ao_receber_json(evt) {
     const input  = document.getElementById('input_carregar');
     const estado = JSON.parse(input.value);
+    Object.assign(estado_salvo, estado);
+                  preset_salvo= "object";
     
-    carregar_estado_para_html(estado);
+    carregar_estado_para_html(estado_salvo, preset_salvo);
     return false; // para não recarregar a página
 }
 
