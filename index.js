@@ -6,25 +6,25 @@ var preset_salvo;
 var estado_salvo = {}
 
 const presets = {
-  "b64obj": [[], [[]]], "object": [[], [[]]],
-  "kanban": [
-    [""], [
-     ["bloqueadas", "a_fazer", "fazendo", "feitas"]
-    ]
-  ],
-  "semana": [
-    [""], [
-     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+    "b64obj": [[], [[]]], "object": [[], [[]]],
+    "kanban": [
+        [""], [
+            ["bloqueadas", "a_fazer", "fazendo", "feitas"]
+        ]
     ],
-  ],
-  "mes": [
-    ["semana_1", "semana_2", "semana_3", "semana_4"], [
-     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
-     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
-     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
-     ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
-    ]
-  ],
+    "semana": [
+        [""], [
+            ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+        ],
+    ],
+    "mes": [
+        ["semana_1", "semana_2", "semana_3", "semana_4"], [
+            ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+            ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+            ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+            ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"],
+        ]
+    ],
 };
 
 
@@ -35,7 +35,7 @@ function main() {
           botao_salvar.textContent = "salvar";
           botao_salvar.onclick = aplicar(salvar_estado_do_html, estado_salvo);
 
-    const form_carregar = form_populado("carregar");
+    const form_carregar = form_vazio("carregar");
           form_carregar.onsubmit = aplicar(ao_receber_json);
 
     cabeçalho.appendChild(form_carregar);
@@ -196,19 +196,18 @@ function carregar_estado_para_html(estado, preset) {
               quadro.id        = `quadro_${id_quadro}`;
               quadro.appendChild(nome);
         quadros.appendChild(quadro);
-        for (const [id, lista] of Object.entries(paineis)) {
-            const pn = painel_populado(id);
+        for (const [id_lista, lista] of Object.entries(paineis)) {
+            const pn = painel_vazio(id_lista);
             quadro.appendChild(pn);
-            const div = document.getElementById(`lista_${id}`); //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra função)
+            //! só funciona na ordem que tá (appendChild etc) (criar lista e passar pra função)
+            const div = document.getElementById(`lista_${id_lista}`); 
                   div.textContent = "";
-            for (let i = 0; i < lista.length; i++) { //! corpo repetido
-                const input      = document.createElement('input');
-                      input.id   = `input_${id}_${i}`;
-                      input.type = 'text';
-                const fr = form(`${id}_${i}`, input);
-                      input.value = lista[i];
-                      fr.addEventListener('blur', aplicar(remover_se_esvaziar, fr, input), true); //! descobrir pq onblur não funcionou
-                      fr.onsubmit =               aplicar(remover_se_esvaziar, fr, input);
+            for (let i = 0; i < lista.length; i++) { //! repetido
+                const id = `${id_lista}_${i}`;
+                const fr = form(id, input(id, lista[i]), {
+                    onblur:   remover_se_esvaziar,
+                    onsubmit: remover_se_esvaziar,
+                });
                 div.appendChild(fr);
             }
         }
@@ -224,13 +223,13 @@ function ao_receber_json(evt) {
     return false; // para não recarregar a página
 }
 
-function painel_populado(nome) {
+function painel_vazio(nome) {
     const tl = document.createElement('h2');
           tl.textContent = nome;
     const ls = document.createElement('div');
           ls.id        = `lista_${nome}`;
           ls.className = "lista";
-    const fr = form_populado(nome);
+    const fr = form_vazio(nome);
 
     return painel(nome, tl, ls, fr);
 }
@@ -245,35 +244,43 @@ function painel(nome, titulo, lista, form) {
     return dv;
 }
 
-function form_populado(id) {
-    const input = document.createElement('input');
-          input.id   = `input_${id}`;
-          input.type = 'text';
-    return form(id, input);
+function form_vazio(id) {
+    return form(id, input(id));
 }
-function form(id, input) {
+function form(id, input, {onsubmit=null, onblur=null}={}) {
     const fieldset = document.createElement('fieldset');
           fieldset.appendChild(input);
 
     const form = document.createElement('form');
           form.id = `form_${id}`;
           form.appendChild(fieldset);
+
+    if (onsubmit)
+        form.onsubmit = aplicar(onsubmit, form, input);
+    if (onblur) //! descobrir pq onblur não funcionou
+        form.addEventListener('blur', aplicar(onblur, form, input), true);
     return form;
 }
 
-function ao_ler_item_novo(div, id, evt) {
+function input(id, texto="") {
+    const input = document.createElement('input');
+          input.id    = `input_${id}`;
+          input.type  = 'text';
+          input.value = texto;
+    return input;
+}
+
+function ao_ler_item_novo(div, _id, evt) {
     const n     = div.childElementCount;
-    const novo  = document.getElementById(`input_${id}`);
+    const novo  = document.getElementById(`input_${_id}`);
     const texto = novo.value.trim(); novo.value = "";
 
-    if (texto) { //! corpo_repetido
-        const input = document.createElement('input');
-              input.id   = `input_${id}_${n}`;
-              input.type = 'text';
-        const fr = form(`${id}_${n}`, input);
-              input.value = texto;
-              fr.addEventListener('blur', aplicar(remover_se_esvaziar, fr, input), true); //! descobrir pq onblur não funcionou
-              fr.onsubmit =               aplicar(remover_se_esvaziar, fr, input);
+    if (texto) { //! repetido
+        const id = `${_id}_${n}`;
+        const fr = form(id, input(id, texto), {
+            onblur:   remover_se_esvaziar,
+            onsubmit: remover_se_esvaziar,
+        });
         div.appendChild(fr);
     }
     return false; // para não recarregar a página
